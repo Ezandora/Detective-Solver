@@ -17,7 +17,7 @@ svn update
 
 What does it do?
 ----------------
-Solves all three cases for the eleventh precinct IOTM in minimal time.
+Solves [all three cases](http://kol.coldfront.net/thekolwiki/index.php/Who_killed_(Victim)%3F) for the [eleventh precinct IOTM](http://kol.coldfront.net/thekolwiki/index.php/Detective_school_application) in minimal time.
 
 
 Screenshots
