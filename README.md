@@ -1,2 +1,25 @@
 # Detective-Solver
 Solves the eleventh precinct mystery in Kingdom of Loathing.
+How do I use it?
+----------------
+First, install it by running this command in KoLmafia's graphical CLI:
+
+<pre>
+svn checkout https://github.com/Ezandora/Detective-Solver/branches/Release/
+</pre>
+Once it's installed, go to the Scripts menu, then select "Detective Solver.ash"
+
+To update the script itself, run this command in the graphical CLI:
+
+<pre>
+svn update
+</pre>
+
+What does it do?
+----------------
+Solves all three cases for the eleventh precinct IOTM in minimal time.
+
+
+Screenshots
+----------------
+[![24 minutes solution](https://raw.github.com/Ezandora/Detective-Solver/master/Images/24.png)](https://raw.github.com/Ezandora/Detective-Solver/master/Images/24.png)
