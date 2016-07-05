@@ -2,8 +2,9 @@
 //Completes all three daily cases for the eleventh precinct.
 //This script is in the public domain.
 since 17.1;
-string __version = "1.0.1";
+string __version = "1.0.2";
 
+string __historical_data_file_name = "Detective_Solver_" + my_id() + "_Historical_Data.txt";
 int __setting_time_limit = 300;
 int __setting_max_attempts = 100;
 int __setting_visit_url_limit = 400;
@@ -132,7 +133,7 @@ boolean __disable_output = false;
 boolean [string] __seen_core_text_test_data;
 boolean __write_test_data = false;
 boolean __abort_on_match_failure = false;
-int dollars_earned = 0;
+int __dollars_earned = 0;
 
 int CORE_TEXT_MATCH_TYPE_UNKNOWN = 0;
 int CORE_TEXT_MATCH_TYPE_NAME = 1;
@@ -225,7 +226,7 @@ Record SolveState
 	
 	int minutes_elapsed;
 	int last_location_visited;
-	int known_killer_location_id;
+	int known_killer_location_id; //valid when > 0
 	
 	boolean failed; //can't load for whatever reason, stop loop
 };
@@ -1617,26 +1618,44 @@ void parseVisited(string url_to_access)
 }
 void parseAccusation(string url_to_access, string page_text)
 {
+	int dollars_earned_from_this_case = 0;
+	boolean solved = false;
+	int minutes_solved_in = 0;
 	//You failed, in 6958 minutes. Oh well, you still get a paycheck, for what it's worth
 	if (page_text.contains_text("Oh well, you still get a paycheck, for what it's worth"))
 	{
-		dollars_earned += 3;
+		minutes_solved_in = page_text.group_string("You failed, in ([0-9]*) minutes")[0][1].to_int_silent();
+		dollars_earned_from_this_case += 3;
 		if (!__disable_output)
 			print("Oh no... the accusation was wrong. I am so sorry!");
 	}
 	else if (page_text.contains_text("Congratulations! You solved the case"))
 	{
+		solved = true;
 		//You solved the case in 28 minutes
-		int minutes_solved_in = page_text.group_string("You solved the case in ([0-9]*) minutes")[0][1].to_int_silent();
+		minutes_solved_in = page_text.group_string("You solved the case in ([0-9]*) minutes")[0][1].to_int_silent();
 		int bonus_dollars = page_text.group_string("detective skill, you've been awarded ([0-9]*) cop dollars")[0][1].to_int_silent();
-		dollars_earned += 3;
-		dollars_earned += bonus_dollars;
+		dollars_earned_from_this_case += 3;
+		dollars_earned_from_this_case += bonus_dollars;
 		if (!__disable_output)
 			print("Solved the case in " + minutes_solved_in + " minutes, earning " + bonus_dollars + " bonus dollars.");
 	}
 	else if (!__disable_output)
 		print_html("I'm not sure what happened. We accused somebody, and then...");
 	
+	if (dollars_earned_from_this_case > 0)
+	{
+		__dollars_earned += dollars_earned_from_this_case;
+		//Update data files:
+		string [string] historical_data_file;
+		file_to_map(__historical_data_file_name, historical_data_file);
+		historical_data_file["total dollars earned"] = historical_data_file["total dollars earned"].to_int_silent() + dollars_earned_from_this_case;
+		historical_data_file["total cases taken"] = historical_data_file["total cases taken"].to_int_silent() + 1;
+		if (solved)
+			historical_data_file["total cases solved"] = historical_data_file["total cases solved"].to_int_silent() + 1;
+		historical_data_file["total minutes taken"] = historical_data_file["total minutes taken"].to_int_silent() + minutes_solved_in;
+		map_to_file(historical_data_file, __historical_data_file_name);
+	}
 }
 
 void parse(string url_to_access, string page_text)
@@ -1778,6 +1797,12 @@ boolean tryToSolveCase()
 {
 	SolveState reset;
 	__state = reset;
+	if (get_property("_detectiveCasesCompleted").to_int_silent() >= 3)
+	{
+		if (!__disable_output)
+			print_html("Out of cases for the day.");
+		return false;
+	}
 	//Are we on a case?
 	buffer page_text = visit_url("wham.php");
 	if (page_text.contains_text("You are not on a case."))
@@ -1935,10 +1960,6 @@ boolean tryToSolveCase()
 				desired_visit_location = visit_id;
 				break;
 			}
-			/*if (!__state.location_ids_visited[5])
-				desired_visit_location = 5;
-			else
-				return;*/
 			
 			//Is there an individual who has made a claim about the killer, but we weren't able to verify yet, but they probably have additional options available to us now?
 			foreach key, i in __state.known_individuals
@@ -2053,12 +2074,30 @@ void solveAllCases(boolean quiet)
 			break;
 		attempts += 1;
 	}
-	if (success && !__disable_output)
+	if ((success || __dollars_earned > 0) && !__disable_output)
 	{
 		//Doesn't list the dollars we get from visiting the precinct every day... should it?
 		string final_output = "Completed solving cases.";
-		if (dollars_earned > 0)
-			final_output += " Earned " + dollars_earned + " cop dollars.";
+		if (__dollars_earned > 0)
+		{
+			final_output += " Earned " + __dollars_earned + " cop dollars.";
+			
+			string [string] historical_data_file;
+			file_to_map(__historical_data_file_name, historical_data_file);
+			int historical_dollars_earned = historical_data_file["total dollars earned"].to_int_silent();
+			int historical_cases_taken = historical_data_file["total cases taken"].to_int_silent();
+			int historical_minutes_taken = historical_data_file["total minutes taken"].to_int_silent();
+			if (historical_cases_taken > 0 && historical_cases_taken > 3)
+			{
+				//Display historical rewards/day, as I think that's the most meaningful. ("how many days is it until I can get X?")
+				float average_dollars_per_case = historical_dollars_earned.to_float() / historical_cases_taken.to_float();
+				float average_dollars_per_day = average_dollars_per_case * 3;
+				
+				float averages_minutes_per_case = historical_minutes_taken.to_float() / historical_cases_taken.to_float();
+				
+				final_output += " Historical average is " + average_dollars_per_day.round() + " dollars/day and " + averages_minutes_per_case.round() + " minutes/case.";
+			}
+		}
 		print_html(final_output);
 	}
 }
