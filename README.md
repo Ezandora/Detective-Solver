@@ -23,3 +23,4 @@ Solves [all three cases](http://kol.coldfront.net/thekolwiki/index.php/Who_kille
 Screenshots
 ----------------
 [![24 minutes solution](https://raw.github.com/Ezandora/Detective-Solver/master/Images/24.png)](https://raw.github.com/Ezandora/Detective-Solver/master/Images/24.png)
+[![Lies](https://raw.github.com/Ezandora/Detective-Solver/master/Images/Lies.png)](https://raw.github.com/Ezandora/Detective-Solver/master/Images/Lies.png)
