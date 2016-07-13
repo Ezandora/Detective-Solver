@@ -2,7 +2,7 @@
 //Completes all three daily cases for the eleventh precinct.
 //This script is in the public domain.
 since 17.1;
-string __version = "1.0.2";
+string __version = "1.1";
 
 string __historical_data_file_name = "Detective_Solver_" + my_id() + "_Historical_Data.txt";
 int __setting_time_limit = 300;
@@ -184,7 +184,7 @@ Record Individual
 	string name;
 	string occupation;
 	int location_id;
-	
+	string personality;
 	
 	boolean asked_about_killer;
 	boolean proven_liar;
@@ -215,6 +215,30 @@ void listAppend(Individual [int] list, Individual entry)
 	while (list contains position)
 		position += 1;
 	list[position] = entry;
+}
+
+int IndividualGetInformationCount(Individual i)
+{
+	int information_count = 0;
+	if (i.name != "")
+		information_count += 1;
+	if (i.occupation != "")
+		information_count += 1;
+	if (i.location_id > 0)
+		information_count += 1;
+	return information_count;
+}
+
+int IndividualGetInformationCountIgnoringType(Individual i, int type)
+{
+	int information_count = 0;
+	if (i.name != "" && type != CORE_TEXT_MATCH_TYPE_NAME)
+		information_count += 1;
+	if (i.occupation != "" && type != CORE_TEXT_MATCH_TYPE_OCCUPATION)
+		information_count += 1;
+	if (i.location_id > 0 && type != CORE_TEXT_MATCH_TYPE_LOCATION)
+		information_count += 1;
+	return information_count;
 }
 
 Record SolveState
@@ -249,27 +273,29 @@ void IndividualOutput(Individual i)
 		return;
 	print_html(processEmptyStringAs(i.name, "?") + ", the victim's " + processEmptyStringAs(i.occupation, "?") + " in the " + __state.location_ids_to_names[i.location_id] + ".");
 	
-	string [int] boolean_attributes;
+	string [int] attributes;
+	if (i.personality != "")
+		attributes.listAppend(i.personality);
 	if (i.proven_liar)
-		boolean_attributes.listAppend("a proven <font color=red>liar</font>");
+		attributes.listAppend("a proven <font color=red>liar</font>");
 	if (i.asked_about_killer)
-		boolean_attributes.listAppend("we've asked about the killer");
+		attributes.listAppend("we've asked about the killer");
 	if (i.asked_about_killer)
 	{
 		if (i.knows_about_killer)
 		{
 			if (i.suspects_killer_name != "")
-				boolean_attributes.listAppend("they know the killer's name: " + i.suspects_killer_name);
+				attributes.listAppend("they know the killer's name: " + i.suspects_killer_name);
 			if (i.suspects_killer_occupation != "")
-				boolean_attributes.listAppend("they know the killer's occupation: " + i.suspects_killer_occupation);
-			//boolean_attributes.listAppend("they know information about the killer: " + i.suspects_killer_name + i.suspects_killer_occupation);
+				attributes.listAppend("they know the killer's occupation: " + i.suspects_killer_occupation);
+			//attributes.listAppend("they know information about the killer: " + i.suspects_killer_name + i.suspects_killer_occupation);
 		}
 		else
-			boolean_attributes.listAppend("they do not know about the killer");
+			attributes.listAppend("they do not know about the killer");
 	}
 	
-	if (boolean_attributes.count() > 0)
-		print_html(boolean_attributes.listJoinComponents(", ", "and").capitaliseFirstLetter() + ".");
+	if (attributes.count() > 0)
+		print_html(attributes.listJoinComponents(", ", "and").capitaliseFirstLetter() + ".");
 	//print_html(i.to_json().replace_string(",", ", "));
 	if (__setting_debug || true) //should be readable enough
 	{
@@ -496,6 +522,14 @@ void SolveStateReverifyClaims(SolveState state)
 void SolveStateFindKiller(SolveState state)
 {
 	//Checking what we know, can we deduce the killer?
+	int people_that_cannot_give_information_on_the_killer = 0;
+	foreach key, i in state.known_individuals
+	{
+		if (i.proven_liar || (i.asked_about_killer && !i.knows_about_killer))
+		{
+			 people_that_cannot_give_information_on_the_killer += 1;
+		}
+	}
 	foreach key, i in state.known_individuals
 	{
 		if (i.proven_liar)
@@ -505,18 +539,26 @@ void SolveStateFindKiller(SolveState state)
 		
 		//Use lie hypothesis - liars always lie unless they're asked about name and give a location.
 		boolean trustworthy = false;
+		//Do they have a verified claim that was true?
 		foreach key2, claim in i.interrogation_claims
 		{
 			if (!claim.verified)
 				continue;
 			if (!claim.was_true)
 				continue;
-			if (!(claim.type_interrogated_by == CORE_TEXT_MATCH_TYPE_NAME && claim.claim_type == CORE_TEXT_MATCH_TYPE_LOCATION)) //no information from this
+			//if (!(claim.type_interrogated_by == CORE_TEXT_MATCH_TYPE_NAME && claim.claim_type == CORE_TEXT_MATCH_TYPE_LOCATION)) //no information from this
+			if (true)
 			{
 				trustworthy = true;
 				break;
 			}
 		}
+		//Alternatively, is everyone else untrustworthy?
+		if (people_that_cannot_give_information_on_the_killer == 8)
+		{
+			trustworthy = true;
+		}
+		
 		
 		if (trustworthy)
 		{
@@ -537,7 +579,8 @@ void SolveStateFindKiller(SolveState state)
 
 void SolveStateVerifyLieHypothesis(SolveState state)
 {
-	//Current hypothesis: If we asked by name, and they gave a location, they are always telling the truth. In every other case, liars are lying.
+	//Old hypothesis: If we asked by name, and they gave a location, they are always telling the truth. In every other case, liars are lying.
+	//CDM seems to have changed this. New hypothesis: Liars always lie.
 	boolean failed = false;
 	foreach key, i in state.known_individuals
 	{
@@ -549,7 +592,7 @@ void SolveStateVerifyLieHypothesis(SolveState state)
 			boolean state_must_be_false = false;
 			if (i.proven_liar)
 			{
-				if (claim.type_interrogated_by == CORE_TEXT_MATCH_TYPE_NAME && claim.claim_type == CORE_TEXT_MATCH_TYPE_LOCATION)
+				if (false && claim.type_interrogated_by == CORE_TEXT_MATCH_TYPE_NAME && claim.claim_type == CORE_TEXT_MATCH_TYPE_LOCATION)
 					state_must_be_true = true;
 				else
 					state_must_be_false = true;
@@ -896,11 +939,12 @@ void initialiseCoreTextMatchers()
 	
 	//By name:
 	//This may give us information, but maybe not - FIXME check
-	__core_text_matchers_by_name.listAppend(CoreTextMatcherMake("\"Don't care much for her, though. She's up to something shifty, if you ask me.\"", "", CORE_TEXT_MATCH_TYPE_NO_INFORMATION));
-	__core_text_matchers_by_name.listAppend(CoreTextMatcherMake("\"Don't care much for him, though. He's up to something shifty, if you ask me.\"", "", CORE_TEXT_MATCH_TYPE_NO_INFORMATION));
-	__core_text_matchers_by_name.listAppend(CoreTextMatcherMake("\"Why, I could tell you some real stories, Detective!\"<p>\"That won't be necessary,\" you say. <p>\"Just as well. I'd forgotten you were a policeman for a moment.\"", "", CORE_TEXT_MATCH_TYPE_NO_INFORMATION));
+	//shifty, bertie, and paranoid give no information responses.
+	__core_text_matchers_by_name.listAppend(CoreTextMatcherMake("\"Don't care much for her, though. She's up to something shifty, if you ask me.\"", "", CORE_TEXT_MATCH_TYPE_NO_INFORMATION)); //shifty
+	__core_text_matchers_by_name.listAppend(CoreTextMatcherMake("\"Don't care much for him, though. He's up to something shifty, if you ask me.\"", "", CORE_TEXT_MATCH_TYPE_NO_INFORMATION)); //shifty
+	__core_text_matchers_by_name.listAppend(CoreTextMatcherMake("\"Why, I could tell you some real stories, Detective!\"<p>\"That won't be necessary,\" you say. <p>\"Just as well. I'd forgotten you were a policeman for a moment.\"", "", CORE_TEXT_MATCH_TYPE_NO_INFORMATION)); //bertie
 	
-	__core_text_matchers_by_name.listAppend(CoreTextMatcherMake("For all I know, that's a lizard underneath that human skin.\"", "", CORE_TEXT_MATCH_TYPE_NO_INFORMATION));
+	__core_text_matchers_by_name.listAppend(CoreTextMatcherMake("For all I know, that's a lizard underneath that human skin.\"", "", CORE_TEXT_MATCH_TYPE_NO_INFORMATION)); //paranoid
 	
 	
 	
@@ -1151,11 +1195,12 @@ void initialiseCoreTextMatchers()
 	
 	
 	//By occupation:
-	__core_text_matchers_by_occupation.listAppend(CoreTextMatcherMake("all words and hot air. No muscle, no backbone.", "", CORE_TEXT_MATCH_TYPE_NO_INFORMATION)); //This does actually give information - on gender - but we don't track that information
+	//Jock and nancydrew have bugged/no information responses by occupation
+	__core_text_matchers_by_occupation.listAppend(CoreTextMatcherMake("all words and hot air. No muscle, no backbone.", "", CORE_TEXT_MATCH_TYPE_NO_INFORMATION)); //This does actually give information - on gender - but we don't track that information //jock
 	
-	__core_text_matchers_by_occupation.listAppend(CoreTextMatcherMake("creeps me out. There's something real fishy about", "", CORE_TEXT_MATCH_TYPE_BUGGED)); //\"Can you tell me anything about Madelyn Wilson's physician.\" you ask.<p>\"Gross. Yeah,\" Nicky says. \"That's the victim's physician. He creeps me out. There's something real fishy about him, Detective!\"
-	__core_text_matchers_by_occupation.listAppend(CoreTextMatcherMake("\"I'm pretty sure he's hiding something, but I guess that doesn't necessarily make him the killer. Lots of people around here have stuff they wanna keep secret.\"", "", CORE_TEXT_MATCH_TYPE_BUGGED));
-	__core_text_matchers_by_occupation.listAppend(CoreTextMatcherMake("\"I'm pretty sure she's hiding something, but I guess that doesn't necessarily make her the killer. Lots of people around here have stuff they wanna keep secret.\"", "", CORE_TEXT_MATCH_TYPE_BUGGED));
+	__core_text_matchers_by_occupation.listAppend(CoreTextMatcherMake("creeps me out. There's something real fishy about", "", CORE_TEXT_MATCH_TYPE_BUGGED)); //\"Can you tell me anything about Madelyn Wilson's physician.\" you ask.<p>\"Gross. Yeah,\" Nicky says. \"That's the victim's physician. He creeps me out. There's something real fishy about him, Detective!\" //nancydrew
+	__core_text_matchers_by_occupation.listAppend(CoreTextMatcherMake("\"I'm pretty sure he's hiding something, but I guess that doesn't necessarily make him the killer. Lots of people around here have stuff they wanna keep secret.\"", "", CORE_TEXT_MATCH_TYPE_BUGGED)); //nancydrew
+	__core_text_matchers_by_occupation.listAppend(CoreTextMatcherMake("\"I'm pretty sure she's hiding something, but I guess that doesn't necessarily make her the killer. Lots of people around here have stuff they wanna keep secret.\"", "", CORE_TEXT_MATCH_TYPE_BUGGED)); //nancydrew
 	
 	__core_text_matchers_by_occupation.listAppend(CoreTextMatcherMake("As pleasant a luncheon companion as I've had, at least from the lower strata of society.\"", "says. \"([^\.]*)\. As pleasant a luncheon companion as I've had,", CORE_TEXT_MATCH_TYPE_NAME));
 	__core_text_matchers_by_occupation.listAppend(CoreTextMatcherMake("Utterly unsuited to the upper-class lifestyle, of course.\"", "name is ([^\.]*)\. Charming", CORE_TEXT_MATCH_TYPE_NAME));
@@ -1393,6 +1438,7 @@ CoreTextMatch parseCoreText(Individual individual_interrogating, string url_to_a
 		}
 		else
 		{
+			abort("unable to discover");
 			if (!__disable_output)
 				print_html("<font color=red>Unknown match type for killer.</font> Input text is \"" + core_text.entity_encode() + "\"");
 			if (__abort_on_match_failure)
@@ -1497,9 +1543,15 @@ CoreTextMatch parseCoreText(Individual individual_interrogating, string url_to_a
 
 void parseCoreTextFromPageText(Individual individual_interrogating, string url_to_access, string page_text)
 {
-	string [int][int] matches = group_string(page_text.replace_string("\r", "").replace_string("\n", "").replace_string("\t", ""), "<!-- <div [^>]*> -->(.*)<!-- </div> -->");
+	//string [int][int] matches = group_string(page_text.replace_string("\r", "").replace_string("\n", "").replace_string("\t", ""), "<!-- <div [^>]*> -->(.*)<!-- </div> -->");
+	string [int][int] matches = group_string(page_text.replace_string("\r", "").replace_string("\n", "").replace_string("\t", ""), "<td colspan=2 width=500>(.*)<!-- </div> -->");
 	//<!-- <div style="width: 460px; height: 110px; padding: 20px; position: relative; text-align: center; " > --> Click a room on the map to move to that room <!-- </div> -->
 	//print_html("parseCoreText matches = " + matches.to_json().entity_encode());
+	if (matches.count() == 0)
+	{
+		//future proof against CDM noticing the other div disappearing:
+		matches = group_string(page_text.replace_string("\r", "").replace_string("\n", "").replace_string("\t", ""), "<td colspan=2 width=500>(.*)</td>");
+	}
 	
 	if (matches.count() == 0)
 		return;
@@ -1559,6 +1611,14 @@ void parseIndividualChoices(Individual individual_interrogating, string page_tex
 {
 	if (!individual_interrogating.exists)
 		return;
+	
+	//Learn personality:
+	string personality = group_string(page_text, "/adventureimages/suspect_([^\\.]*)\.gif")[0][1];
+	if (personality.contains_text("_f")) //nancydrew vs. nancydrew_f
+	{
+		personality = personality.replace_string("_f", "");
+	}
+	individual_interrogating.personality = personality;
 	//<a href="wham.php?ask=self&visit=2">herself</a>
 	string [int][int] matches = group_string(page_text, "<a href=\"wham.php.ask=([^&]*)&visit=([0-9]*)\">([^<]*)</a>");
 	//print_html("choice matches = " + matches.to_json().entity_encode());
@@ -1643,7 +1703,7 @@ void parseAccusation(string url_to_access, string page_text)
 	else if (!__disable_output)
 		print_html("I'm not sure what happened. We accused somebody, and then...");
 	
-	if (dollars_earned_from_this_case > 0)
+	if (!__setting_debug && dollars_earned_from_this_case > 0)
 	{
 		__dollars_earned += dollars_earned_from_this_case;
 		//Update data files:
@@ -1905,47 +1965,106 @@ boolean tryToSolveCase()
 		{
 			//We haven't asked them about the killer yet.
 			visitAndParse("wham.php?ask=killer&visit=" + currently_interrogating.location_id);
+			currently_interrogating.asked_about_killer = true;
 			continue;
 		}
 		
 		boolean pick_someone_else = false;
-		if (!(currently_interrogating.proven_liar || !currently_interrogating.knows_about_killer))
+		//Do we have unverified information they've given us? If so, leave:
+		boolean current_subject_has_unverified_claims = false;
+		foreach key, claim in currently_interrogating.interrogation_claims
 		{
-			//Some liars we've seen:
-			//They tell the truth if we ask them for a name and they give a location, but otherwise they lie. Seemingly.
-			//So... just ask a question by occupation.
-			//Also, ask a question about someone we have the most information for.
+			if (!claim.verified)
+			{
+				current_subject_has_unverified_claims = true;
+				break;
+			}
+		}
+		if (current_subject_has_unverified_claims)
+			pick_someone_else = true;
+		
+		if (!(currently_interrogating.proven_liar || !currently_interrogating.knows_about_killer) && !pick_someone_else) //if they're not a liar or don't know about the killer
+		{
+			//Ask a question about someone we have the most information for.
+			//Now, we can ask by both name and occupation.
+			//Should try to ask shifty/paranoid by occupation, and jock/nancydrew by name, if you have a choice between one or the other, due to reasons.
+			//FIXME implement this
 			
-			int chosen_person_to_ask = -1;
-			int chosen_person_to_ask_relevant_information_count = 0;
-			//print_html("currently_interrogating.possible_choices_by_occupation_location_ids = " + currently_interrogating.possible_choices_by_occupation_location_ids.to_json());
+			int chosen_person_to_ask_by_name = -1;
+			int chosen_person_to_ask_by_name_relevant_information_count = 0;
+			foreach location_id in currently_interrogating.possible_choices_by_name_location_ids
+			{
+				if (currently_interrogating.choices_name_we_visited_by_location_id[location_id])
+					continue;
+			
+				Individual target = __state.SolveStateLookupIndividualByLocationID(location_id);
+				int information_count = target.IndividualGetInformationCountIgnoringType(CORE_TEXT_MATCH_TYPE_NAME); //only qualify information we can gain
+				
+				if (information_count > chosen_person_to_ask_by_name_relevant_information_count)
+				{
+					chosen_person_to_ask_by_name_relevant_information_count = information_count;
+					chosen_person_to_ask_by_name = location_id;
+				}
+			}
+			
+			int chosen_person_to_ask_by_occupation = -1;
+			int chosen_person_to_ask_by_occupation_relevant_information_count = 0;
 			foreach location_id in currently_interrogating.possible_choices_by_occupation_location_ids
 			{
 				if (currently_interrogating.choices_occupation_we_visited_by_location_id[location_id])
 					continue;
 			
-				int information_count = 0;
 				Individual target = __state.SolveStateLookupIndividualByLocationID(location_id);
-				if (target.name != "")
-					information_count += 1;
-				if (target.occupation != "")
-					information_count += 1;
-				if (target.location_id > 0) //this is always true
-					information_count += 1;
-				if (information_count > chosen_person_to_ask_relevant_information_count)
+				int information_count = target.IndividualGetInformationCountIgnoringType(CORE_TEXT_MATCH_TYPE_OCCUPATION); //only qualify information we can gain
+				
+				if (information_count > chosen_person_to_ask_by_occupation_relevant_information_count)
 				{
-					chosen_person_to_ask_relevant_information_count = information_count;
-					chosen_person_to_ask = location_id;
+					chosen_person_to_ask_by_occupation_relevant_information_count = information_count;
+					chosen_person_to_ask_by_occupation = location_id;
 				}
 			}
-			if (chosen_person_to_ask != -1)
+			
+			if (chosen_person_to_ask_by_name == -1 && chosen_person_to_ask_by_occupation == -1)
 			{
-				visitAndParse("wham.php?ask=rel&w=" + chosen_person_to_ask + "&visit=" + currently_interrogating.location_id);
-				continue;
+				pick_someone_else = true;
 			}
 			else
 			{
-				pick_someone_else = true;
+				//Pick which one we ask by:
+				boolean ask_by_occupation = false;
+				//Pick the type we have the most information for:
+				if (chosen_person_to_ask_by_occupation_relevant_information_count > chosen_person_to_ask_by_name_relevant_information_count)
+					ask_by_occupation = true;
+				else if (chosen_person_to_ask_by_occupation_relevant_information_count < chosen_person_to_ask_by_name_relevant_information_count)
+					ask_by_occupation = false;
+				else if (random(2) == 0) //they're tied, pick randomly, why not?
+					ask_by_occupation = true;
+				if (currently_interrogating.personality == "jock" || currently_interrogating.personality == "nancydrew")
+				{
+					//Prefer to ask by name for these:
+					ask_by_occupation = false;
+				}
+				if (currently_interrogating.personality == "shifty" || currently_interrogating.personality == "paranoid" || currently_interrogating.personality == "bertie")
+				{
+					//Prefer to ask by occupation:
+					ask_by_occupation = true;
+				}
+				
+				if (chosen_person_to_ask_by_name == -1) //can't
+					ask_by_occupation = true;
+				else if (chosen_person_to_ask_by_occupation == -1)
+					ask_by_occupation = false;
+				
+				if (chosen_person_to_ask_by_occupation != -1 && ask_by_occupation)
+				{
+					visitAndParse("wham.php?ask=rel&w=" + chosen_person_to_ask_by_occupation + "&visit=" + currently_interrogating.location_id);
+					continue;
+				}
+				else if (chosen_person_to_ask_by_name != -1)
+				{
+					visitAndParse("wham.php?ask=" + chosen_person_to_ask_by_name + "&visit=" + currently_interrogating.location_id);
+					continue;
+				}
 			}
 		}
 		
@@ -2112,8 +2231,11 @@ void main()
 		__setting_visit_url_limit = 2000;
 	}
 	
-	if (false) //do not enable unless you love sending server requests
+	if (__setting_debug && false) //do not enable unless you love sending server requests
+	{
 		collectTestData();
+		return;
+	}
 	
 	solveAllCases(false);
 }
