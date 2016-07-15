@@ -2,7 +2,7 @@
 //Completes all three daily cases for the eleventh precinct.
 //This script is in the public domain.
 since 17.1;
-string __version = "1.1";
+string __version = "1.1.1";
 
 string __historical_data_file_name = "Detective_Solver_" + my_id() + "_Historical_Data.txt";
 int __setting_time_limit = 300;
@@ -129,6 +129,7 @@ string stringAddSpacersEvery(string s, int distance)
 }
 
 //Main:
+boolean __extended_time_limit_previously = false; //only allow this once
 boolean __disable_output = false;
 boolean [string] __seen_core_text_test_data;
 boolean __write_test_data = false;
@@ -1569,7 +1570,18 @@ void parseMinutes(string page_text)
 	string [int][int] matches = page_text.group_string("<td align=left>You have been on this case for ([0-9]*) minutes</td>");
 	if (matches.count() == 0)
 		return;
+		
+	boolean first_minutes_elapsed = false;
+	
+	if (__state.minutes_elapsed <= 0)
+		first_minutes_elapsed = true;
 	__state.minutes_elapsed = matches[0][1].to_int();
+	if (first_minutes_elapsed && !__extended_time_limit_previously)
+	{
+		//Temporarily extend the time limit:
+		__setting_time_limit = MIN(600, MAX(__setting_time_limit, __state.minutes_elapsed + 100));
+		__extended_time_limit_previously = true;
+	}
 }
 
 void parseMap(string page_text)
