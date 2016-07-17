@@ -2,7 +2,7 @@
 //Completes all three daily cases for the eleventh precinct.
 //This script is in the public domain.
 since 17.1;
-string __version = "1.1.1";
+string __version = "1.1.2";
 
 string __historical_data_file_name = "Detective_Solver_" + my_id() + "_Historical_Data.txt";
 int __setting_time_limit = 300;
@@ -843,6 +843,7 @@ void initialiseCoreTextMatchers()
 	__core_text_matchers_killer.listAppend(CoreTextMatcherMake("notebook and quickly scans the pages. \"I think it's", "\"I think it's (.*), Detective!", CORE_TEXT_MATCH_TYPE_OCCUPATION));
 	__core_text_matchers_killer.listAppend(CoreTextMatcherMake("can't prove it, but if you send these hair and fingerprint samples to the police lab...\"<p>\"I'll just take your word for it, kid.", "Oh, it's definitely (.*), Detective!", CORE_TEXT_MATCH_TYPE_OCCUPATION));
 	__core_text_matchers_killer.listAppend(CoreTextMatcherMake("Well, since you asked me, Detective,", "I would say it was undoubtedly that snivelling little upstart of a (.*)\\.", CORE_TEXT_MATCH_TYPE_OCCUPATION));
+	__core_text_matchers_killer.listAppend(CoreTextMatcherMake("Well, since you asked me, Detective,", "I would say it was undoubtedly that snivelling little upstart of an (.*)\\.", CORE_TEXT_MATCH_TYPE_OCCUPATION));
 	__core_text_matchers_killer.listAppend(CoreTextMatcherMake("Are you serious, Detective. Have you <i>met</i> them", "Without question, it was ([^,]*),", CORE_TEXT_MATCH_TYPE_OCCUPATION));
 	__core_text_matchers_killer.listAppend(CoreTextMatcherMake("Very well, if it will get me out of this miserable situation more quickly. It was", "It was (.*) --", CORE_TEXT_MATCH_TYPE_OCCUPATION));
 	__core_text_matchers_killer.listAppend(CoreTextMatcherMake("That's the query whizzing around everyone's racetrack today. Who put the nails in poor old", "It was ([^\.]*)\.", CORE_TEXT_MATCH_TYPE_OCCUPATION));
@@ -1034,6 +1035,7 @@ void initialiseCoreTextMatchers()
 	__core_text_matchers_by_name.listAppend(CoreTextMatcherMake("across the room, heh heh. Oh, don't give me that look,", "\"That's ([^\.]*)\. I challenged", CORE_TEXT_MATCH_TYPE_OCCUPATION));
 	__core_text_matchers_by_name.listAppend(CoreTextMatcherMake("-- a skinny little sneak. I trust", "grunts. \"That's (.*) -- a skinny little sneak. I trust", CORE_TEXT_MATCH_TYPE_OCCUPATION));
 	__core_text_matchers_by_name.listAppend(CoreTextMatcherMake("\"I've got no use for that scrawny runt of a", "\"I've got no use for that scrawny runt of a ([^,]*),", CORE_TEXT_MATCH_TYPE_OCCUPATION));
+	__core_text_matchers_by_name.listAppend(CoreTextMatcherMake("\"I've got no use for that scrawny runt of a", "\"I've got no use for that scrawny runt of an ([^,]*),", CORE_TEXT_MATCH_TYPE_OCCUPATION));
 	__core_text_matchers_by_name.listAppend(CoreTextMatcherMake("\"Pathetic. All talk and no fight.\"", "<p>\"Yeah, I know that wimp. That's ([^,]*),\"", CORE_TEXT_MATCH_TYPE_OCCUPATION));
 	__core_text_matchers_by_name.listAppend(CoreTextMatcherMake(", and that's all I wanna know about that jerk.\"", "All I know is she's ([^,]*),", CORE_TEXT_MATCH_TYPE_OCCUPATION));
 	__core_text_matchers_by_name.listAppend(CoreTextMatcherMake(", and that's all I wanna know about that jerk.\"", "All I know is he's ([^,]*),", CORE_TEXT_MATCH_TYPE_OCCUPATION));
@@ -1057,6 +1059,8 @@ void initialiseCoreTextMatchers()
 	__core_text_matchers_by_name.listAppend(CoreTextMatcherMake("She's horrible. At least she's horrible to me. Now that I think about it, in that respect she's no different from anyone else, really.\"", "\"She's ([^\.]*)\. She's horrible.", CORE_TEXT_MATCH_TYPE_OCCUPATION));
 	__core_text_matchers_by_name.listAppend(CoreTextMatcherMake("got stuck with a (.*) like me, either. Unlucky, I suppose.\"", "got stuck with a (.*) like him.", CORE_TEXT_MATCH_TYPE_OCCUPATION));
 	__core_text_matchers_by_name.listAppend(CoreTextMatcherMake("got stuck with a (.*) like me, either. Unlucky, I suppose.\"", "got stuck with a (.*) like her.", CORE_TEXT_MATCH_TYPE_OCCUPATION));
+	__core_text_matchers_by_name.listAppend(CoreTextMatcherMake("got stuck with an (.*) like me, either. Unlucky, I suppose.\"", "got stuck with an (.*) like him.", CORE_TEXT_MATCH_TYPE_OCCUPATION));
+	__core_text_matchers_by_name.listAppend(CoreTextMatcherMake("got stuck with an (.*) like me, either. Unlucky, I suppose.\"", "got stuck with an (.*) like her.", CORE_TEXT_MATCH_TYPE_OCCUPATION));
 	
 	
 	
