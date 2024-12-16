@@ -2,7 +2,7 @@
 //Completes all three daily cases for the eleventh precinct.
 //This script is in the public domain.
 since 17.1;
-string __version = "1.1.2";
+string __version = "1.1.3";
 
 string __historical_data_file_name = "Detective_Solver_" + my_id() + "_Historical_Data.txt";
 int __setting_time_limit = 300;
@@ -14,9 +14,13 @@ boolean __setting_debug = false;
 boolean __setting_output_various_debug_text = false;
 
 
+string __title_match_regex = "<td[^>]*><b[^>]*>Who killed ";
 
 
-
+boolean stringMatchesRegex(string str, string regex)
+{
+	return group_string(str, regex).count() > 0;
+}
 
 //Code from Guide:
 void listAppend(string [int] list, string entry)
@@ -56,12 +60,12 @@ string listJoinComponents(string [int] list, string joining_string, string and_s
 	return result.to_string();
 }
 
-buffer to_buffer(string str)
+/*buffer to_buffer(string str)
 {
 	buffer result;
 	result.append(str);
 	return result;
-}
+}*/
 
 //to_int will print a warning, but not halt, if you give it a non-int value.
 //This function prevents the warning message.
@@ -186,6 +190,7 @@ Record Individual
 	string occupation;
 	int location_id;
 	string personality;
+	string gender;
 	
 	boolean asked_about_killer;
 	boolean proven_liar;
@@ -340,6 +345,11 @@ void IndividualOutput(Individual i)
 		}
 	}
 	print_html("");
+	
+	if (my_id() == 1557284)
+	{
+		logprint("DETECTIVE_SOLVER_INDIVIDUAL_INFORMATION " + i.to_json());
+	}
 }
 
 void SolveStateOutput(SolveState state)
@@ -1201,7 +1211,7 @@ void initialiseCoreTextMatchers()
 	
 	//By occupation:
 	//Jock and nancydrew have bugged/no information responses by occupation
-	__core_text_matchers_by_occupation.listAppend(CoreTextMatcherMake("all words and hot air. No muscle, no backbone.", "", CORE_TEXT_MATCH_TYPE_NO_INFORMATION)); //This does actually give information - on gender - but we don't track that information //jock
+	__core_text_matchers_by_occupation.listAppend(CoreTextMatcherMake("all words and hot air. No muscle, no backbone.", "", CORE_TEXT_MATCH_TYPE_NO_INFORMATION)); //This does actually give information - on gender - but we don't parse that information //jock
 	
 	__core_text_matchers_by_occupation.listAppend(CoreTextMatcherMake("creeps me out. There's something real fishy about", "", CORE_TEXT_MATCH_TYPE_BUGGED)); //\"Can you tell me anything about Madelyn Wilson's physician.\" you ask.<p>\"Gross. Yeah,\" Nicky says. \"That's the victim's physician. He creeps me out. There's something real fishy about him, Detective!\" //nancydrew
 	__core_text_matchers_by_occupation.listAppend(CoreTextMatcherMake("\"I'm pretty sure he's hiding something, but I guess that doesn't necessarily make him the killer. Lots of people around here have stuff they wanna keep secret.\"", "", CORE_TEXT_MATCH_TYPE_BUGGED)); //nancydrew
@@ -1633,7 +1643,10 @@ void parseIndividualChoices(Individual individual_interrogating, string page_tex
 	if (personality.contains_text("_f")) //nancydrew vs. nancydrew_f
 	{
 		personality = personality.replace_string("_f", "");
+		individual_interrogating.gender = "female";
 	}
+	else
+		individual_interrogating.gender = "male";
 	individual_interrogating.personality = personality;
 	//<a href="wham.php?ask=self&visit=2">herself</a>
 	string [int][int] matches = group_string(page_text, "<a href=\"wham.php.ask=([^&]*)&visit=([0-9]*)\">([^<]*)</a>");
@@ -1824,7 +1837,7 @@ void visitAndParse(string url_to_access)
 		print_html("<font color=\"#002255\">" + output_description + "</font>");
 	
 	string page_text = visit_url(url_to_access, false, false);
-	if (page_text.contains_text("You are not on a case.") || !page_text.contains_text("blue><b>Who killed "))
+	if (page_text.contains_text("You are not on a case.") || !page_text.stringMatchesRegex(__title_match_regex))
 	{
 		__state.failed = true;
 		return;
@@ -1886,7 +1899,7 @@ boolean tryToSolveCase()
 		//You are (not) on a case.
 		//Start a new one:
 		page_text = visit_url("place.php?whichplace=town_wrong&action=townwrong_precinct");
-		if (page_text.contains_text("blue><b>The Wrong Side of the Tracks</b>"))
+		if (page_text.stringMatchesRegex("<b[^>]*>The Wrong Side of the Tracks</b>"))
 		{
 			if (!__disable_output)
 				print_html("You probably don't have a precinct, detective.");
@@ -1901,7 +1914,7 @@ boolean tryToSolveCase()
 		page_text = visit_url("choice.php?whichchoice=1193&option=1");
 		//You don't need to click through, it just goes to wham.php anyways.
 	}
-	else if (!page_text.contains_text("blue><b>Who killed "))
+	else if (!page_text.stringMatchesRegex(__title_match_regex))
 	{
 		if (!__disable_output)
 			print_html("Unknown error with wham.php. Bailing out.");
