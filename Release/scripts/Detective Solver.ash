@@ -56,12 +56,15 @@ string listJoinComponents(string [int] list, string joining_string, string and_s
 	return result.to_string();
 }
 
+//Now a mafia function
+/*
 buffer to_buffer(string str)
 {
 	buffer result;
 	result.append(str);
 	return result;
 }
+*/
 
 //to_int will print a warning, but not halt, if you give it a non-int value.
 //This function prevents the warning message.
@@ -1824,7 +1827,7 @@ void visitAndParse(string url_to_access)
 		print_html("<font color=\"#002255\">" + output_description + "</font>");
 	
 	string page_text = visit_url(url_to_access, false, false);
-	if (page_text.contains_text("You are not on a case.") || !page_text.contains_text("blue><b>Who killed "))
+	if (page_text.contains_text("You are not on a case.") || !page_text.contains_text(">Who killed "))
 	{
 		__state.failed = true;
 		return;
@@ -1901,7 +1904,7 @@ boolean tryToSolveCase()
 		page_text = visit_url("choice.php?whichchoice=1193&option=1");
 		//You don't need to click through, it just goes to wham.php anyways.
 	}
-	else if (!page_text.contains_text("blue><b>Who killed "))
+	else if (!page_text.contains_text(">Who killed "))
 	{
 		if (!__disable_output)
 			print_html("Unknown error with wham.php. Bailing out.");
